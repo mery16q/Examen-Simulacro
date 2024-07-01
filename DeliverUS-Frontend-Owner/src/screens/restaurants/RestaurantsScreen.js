@@ -2,7 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { StyleSheet, FlatList, Pressable, View } from 'react-native'
 
-import { getAll, remove } from '../../api/RestaurantEndpoints'
+import { getAll, remove, changePromotion } from '../../api/RestaurantEndpoints'
 import ImageCard from '../../components/ImageCard'
 import TextSemiBold from '../../components/TextSemibold'
 import TextRegular from '../../components/TextRegular'
@@ -12,11 +12,13 @@ import { AuthorizationContext } from '../../context/AuthorizationContext'
 import { showMessage } from 'react-native-flash-message'
 import DeleteModal from '../../components/DeleteModal'
 import restaurantLogo from '../../../assets/restaurantLogo.jpeg'
+import ConfirmationModal from '../../components/ConfirmationModal'
 
 export default function RestaurantsScreen ({ navigation, route }) {
   const [restaurants, setRestaurants] = useState([])
   const [restaurantToBeDeleted, setRestaurantToBeDeleted] = useState(null)
   const { loggedInUser } = useContext(AuthorizationContext)
+  const [promoted, setPromoted] = useState([])
 
   useEffect(() => {
     if (loggedInUser) {
@@ -40,6 +42,11 @@ export default function RestaurantsScreen ({ navigation, route }) {
           <TextSemiBold>Avg. service time: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.averageServiceMinutes} min.</TextSemiBold></TextSemiBold>
         }
         <TextSemiBold>Shipping: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.shippingCosts.toFixed(2)}€</TextSemiBold></TextSemiBold>
+        {item.promoted &&
+        <View style={{ alignItems: 'right' }}>
+          <TextRegular style={styles.enPromocion}>¡En promocion!</TextRegular>
+        </View>
+  }
         <View style={styles.actionButtonsContainer}>
           <Pressable
             onPress={() => navigation.navigate('EditRestaurantScreen', { id: item.id })
@@ -77,9 +84,41 @@ export default function RestaurantsScreen ({ navigation, route }) {
             </TextRegular>
           </View>
         </Pressable>
+        <Pressable
+            onPress={() => { setPromoted(item) }}
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed
+                  ? GlobalStyles.brandPrimaryTap
+                  : GlobalStyles.brandPrimary
+              },
+              styles.actionButton
+            ]}>
+          <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+            <MaterialCommunityIcons name='delete' color={'white'} size={20}/>
+            <TextRegular textStyle={styles.text}>
+              {item.promoted ? 'Promoted' : 'NotPromoted' }
+            </TextRegular>
+          </View>
+        </Pressable>
         </View>
       </ImageCard>
     )
+  }
+
+  const changePromoted = async (item) => {
+    try {
+      await changePromotion(item.id)
+      await fetchRestaurants()
+      setPromoted(null)
+    } catch (error) {
+      showMessage({
+        message: `There was an error while retrieving restaurants. ${error} `,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
   }
 
   const renderEmptyRestaurantsList = () => {
@@ -170,6 +209,13 @@ export default function RestaurantsScreen ({ navigation, route }) {
         <TextRegular>The products of this restaurant will be deleted as well</TextRegular>
         <TextRegular>If the restaurant has orders, it cannot be deleted.</TextRegular>
     </DeleteModal>
+    <ConfirmationModal
+    isVisible={promoted !== null}
+    onCancel={() => setPromoted(null)}
+    onConfirm={() => changePromoted(promoted)}>
+      <TextRegular>The restaurant will be promote.</TextRegular>
+      <TextRegular>You will not promote the restaurant.</TextRegular>
+    </ConfirmationModal>
     </>
   )
 }
@@ -177,6 +223,13 @@ export default function RestaurantsScreen ({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1
+  },
+  enPromocion: {
+    flexDirection: 'column',
+    fontSize: 16,
+    color: 'red',
+    alignSelf: 'left',
+    marginLeft: 5
   },
   button: {
     borderRadius: 8,
@@ -195,7 +248,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignSelf: 'center',
     flexDirection: 'column',
-    width: '50%'
+    width: '33%'
   },
   actionButtonsContainer: {
     flexDirection: 'row',

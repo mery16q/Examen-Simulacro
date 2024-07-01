@@ -34,6 +34,11 @@ module.exports = {
         allowNull: true,
         type: Sequelize.DOUBLE
       },
+      promoted: {
+        allowNull: false,
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
       email: {
         type: Sequelize.STRING
       },

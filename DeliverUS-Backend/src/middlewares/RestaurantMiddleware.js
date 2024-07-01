@@ -24,5 +24,54 @@ const restaurantHasNoOrders = async (req, res, next) => {
     return res.status(500).send(err.message)
   }
 }
+/*
+const checkRestaurantNotPromoted = async (req, res, next) => {
+  try {
+    const restaurantP = await Restaurant.findByPk(req.params.restaurantId)
+    if (restaurantP.promoted) {
+      const restaurant = await Restaurant.findOne({
+        where: {
+          userId: req.user.id,
+          promoted: true
+        }
+      })
+      if (restaurant === null) {
+        return next()
+      } else {
+        restaurant.promoted = false
+        return res.status(422).send('The restaurant doesn`t exists.')
+      }
+    }
+  } catch (err) {
+    return res.status(500).send(err.message)
+  }
+}
+  */
 
-export { checkRestaurantOwnership, restaurantHasNoOrders }
+const checkRestaurantNotPromoted = async (req, res, next) => {
+  try {
+    const { promoted } = req.body
+
+    if (promoted === true) {
+      // Check if there's already a promoted restaurant for this user
+      const existingPromotedRestaurant = await Restaurant.findOne({
+        where: {
+          userId: req.user.id,
+          promoted: true
+        }
+      })
+
+      if (existingPromotedRestaurant) {
+        // If another restaurant is already promoted, change its status
+        await existingPromotedRestaurant.update({ promoted: false })
+      }
+    }
+
+    // Proceed to the next middleware/controller
+    return next()
+  } catch (err) {
+    return res.status(500).send(err.message)
+  }
+}
+
+export { checkRestaurantOwnership, restaurantHasNoOrders, checkRestaurantNotPromoted }
